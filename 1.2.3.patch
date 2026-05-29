@@ -1,0 +1,9 @@
+diff --git a/1.2.2.patch b/1.2.2.patch
+index 0519ecb..136d063 100644
+--- a/1.2.2.patch
++++ b/1.2.2.patch
+@@ -1 +1 @@
+- 
+\ No newline at end of file
++  
+\ No newline at end of file
