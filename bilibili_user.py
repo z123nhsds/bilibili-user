@@ -69,13 +69,13 @@ for m in range(5214, 5215):
         ua = random.choice(uas)
         head = {
             'User-Agent': ua,
-            'Referer': 'https://space.bilibili.com/' + str(i) + '?from=search&amp;seid=' + str(random.randint(10000, 50000))
+            'Referer': 'https://space.bilibili.com/' + str(i) + '?from=search&seid=' + str(random.randint(10000, 50000))
         }
         mid = payload['mid']
 
         jscontent = requests \
           .session() \
-          .get('https://api.bilibili.com/x/space/acc/info?mid=%s&amp;jsonp=jsonp' % mid,
+          .get('https://api.bilibili.com/x/space/acc/info?mid=%s&jsonp=jsonp' % mid,
                 headers=head,
                 data=payload
                 ) \
@@ -107,7 +107,7 @@ for m in range(5214, 5215):
                     
                     try:
                         res = requests.get(
-                            'https://api.bilibili.com/x/relation/stat?vmid=' + str(mid) + '&amp;jsonp=jsonp').text
+                            'https://api.bilibili.com/x/relation/stat?vmid=' + str(mid) + '&jsonp=jsonp').text
                         js_fans_data = json.loads(res)
                         user_data['following'] = js_fans_data['data']['following']
                         user_data['fans'] = js_fans_data['data']['follower']
