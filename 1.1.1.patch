@@ -1,0 +1,197 @@
+diff --git a/bilibili_user.py b/bilibili_user.py
+index 772e457..e20b9b0 100644
+--- a/bilibili_user.py
++++ b/bilibili_user.py
+@@ -1,3 +1,4 @@
++
+ # -*-coding:utf8-*-
+ 
+ import requests
+@@ -10,6 +11,8 @@ import time
+ from imp import reload
+ from multiprocessing.dummy import Pool as ThreadPool
+ 
++from user_profile import user_profile_decorator, save_user_profile
++
+ def datetime_to_timestamp_in_milliseconds(d):
+     def current_milli_time(): return int(round(time.time() * 1000))
+     return current_milli_time()
+@@ -57,7 +60,8 @@ for m in range(5214, 5215):
+         urls.append(url)
+ 
+ 
+-    def getsource(url):
++    @user_profile_decorator
++    def fetch_user_data(url):
+         payload = {
+             '_': datetime_to_timestamp_in_milliseconds(datetime.datetime.now()),
+             'mid': url.replace('https://space.bilibili.com/', '')
+@@ -65,82 +69,109 @@ for m in range(5214, 5215):
+         ua = random.choice(uas)
+         head = {
+             'User-Agent': ua,
+-            'Referer': 'https://space.bilibili.com/' + str(i) + '?from=search&seid=' + str(random.randint(10000, 50000))
++            'Referer': 'https://space.bilibili.com/' + str(i) + '?from=search&amp;seid=' + str(random.randint(10000, 50000))
+         }
+         mid = payload['mid']
+ 
+-        #使用post会报错 (2021/5/2)
+         jscontent = requests \
+           .session() \
+-          .get('https://api.bilibili.com/x/space/acc/info?mid=%s&jsonp=jsonp' % mid,
++          .get('https://api.bilibili.com/x/space/acc/info?mid=%s&amp;jsonp=jsonp' % mid,
+                 headers=head,
+                 data=payload
+                 ) \
+           .text
+ 
+-        time2 = time.time()
+         try:
+             jsDict = json.loads(jscontent)
+             status_code = jsDict['code'] if 'code' in jsDict.keys() else False
+             if status_code == 0:
+                 if 'data' in jsDict.keys():
+                     jsData = jsDict['data']
+-                    mid = jsData['mid']
+-                    name = jsData['name']
+-                    sex = jsData['sex']
+-                    rank = jsData['rank']
+-                    face = jsData['face']
+-                    regtimestamp = jsData['jointime']
+-                    regtime_local = time.localtime(regtimestamp)
+-                    regtime = time.strftime("%Y-%m-%d %H:%M:%S", regtime_local)
+-
+-                    birthday = jsData['birthday'] if 'birthday' in jsData.keys() else 'nobirthday'
+-                    sign = jsData['sign']
+-                    level = jsData['level']
+-                    OfficialVerifyType = jsData['official']['type']
+-                    OfficialVerifyDesc = jsData['official']['desc']
+-                    vipType = jsData['vip']['type']
+-                    vipStatus = jsData['vip']['status']
+-                    coins = jsData['coins']
+-                    print("Succeed get user info: " + str(mid) + "\t" + str(time2 - time1))
++                    user_data = {
++                        'mid': jsData['mid'],
++                        'name': jsData['name'],
++                        'sex': jsData['sex'],
++                        'rank': jsData['rank'],
++                        'face': jsData['face'],
++                        'regtimestamp': jsData['jointime'],
++                        'regtime': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(jsData['jointime'])),
++                        'birthday': jsData['birthday'] if 'birthday' in jsData.keys() else 'nobirthday',
++                        'sign': jsData['sign'],
++                        'level': jsData['level'],
++                        'OfficialVerifyType': jsData['official']['type'],
++                        'OfficialVerifyDesc': jsData['official']['desc'],
++                        'vipType': jsData['vip']['type'],
++                        'vipStatus': jsData['vip']['status'],
++                        'coins': jsData['coins']
++                    }
++                    
+                     try:
+                         res = requests.get(
+-                            'https://api.bilibili.com/x/relation/stat?vmid=' + str(mid) + '&jsonp=jsonp').text
+-                        viewinfo = requests.get(
+-                            'https://api.bilibili.com/x/space/upstat?mid=' + str(mid) + '&jsonp=jsonp').text
++                            'https://api.bilibili.com/x/relation/stat?vmid=' + str(mid) + '&amp;jsonp=jsonp').text
+                         js_fans_data = json.loads(res)
+-                        js_viewdata = json.loads(viewinfo)
+-                        following = js_fans_data['data']['following']
+-                        fans = js_fans_data['data']['follower']
++                        user_data['following'] = js_fans_data['data']['following']
++                        user_data['fans'] = js_fans_data['data']['follower']
+                     except:
+-                        following = 0
+-                        fans = 0
+-
+-                else:
+-                    print('no data now')
+-                try:
+-                    print(jsDict)
+-                    # Please write your MySQL's information.
+-                    conn = pymysql.connect(
+-                        host='localhost', user='root', passwd='123456', db='bilibili', charset='utf8')
+-                    cur = conn.cursor()
+-                    cur.execute('INSERT INTO bilibili_user_info(mid, name, sex, rank, face, regtime, \
+-                                birthday, sign, level, OfficialVerifyType, OfficialVerifyDesc, vipType, vipStatus, \
+-                                coins, following, fans) \
+-                    VALUES ("%s","%s","%s","%s","%s","%s","%s","%s",\
+-                            "%s","%s","%s","%s","%s", "%s","%s","%s")'
+-                                %
+-                                (mid, name, sex, rank, face, regtime, \
+-                                 birthday, sign, level, OfficialVerifyType, OfficialVerifyDesc, vipType, vipStatus, \
+-                                 coins, following, fans))
+-                    conn.commit()
+-                except Exception as e:
+-                    print(e)
+-            else:
+-                print("Error: " + url)
++                        user_data['following'] = 0
++                        user_data['fans'] = 0
++                    
++                    return user_data
+         except Exception as e:
+             print(e)
+-            pass
++        
++        return None
++
++    def getsource(url):
++        time2 = time.time()
++        user_data = fetch_user_data(url)
++        
++        if user_data:
++            mid = user_data['mid']
++            name = user_data['name']
++            sex = user_data['sex']
++            rank = user_data['rank']
++            face = user_data['face']
++            regtime = user_data['regtime']
++            birthday = user_data['birthday']
++            sign = user_data['sign']
++            level = user_data['level']
++            OfficialVerifyType = user_data['OfficialVerifyType']
++            OfficialVerifyDesc = user_data['OfficialVerifyDesc']
++            vipType = user_data['vipType']
++            vipStatus = user_data['vipStatus']
++            coins = user_data['coins']
++            following = user_data['following']
++            fans = user_data['fans']
++            
++            print("Succeed get user info: " + str(mid) + "\t" + str(time2 - time1))
++            
++            conn = None
++            try:
++                conn = pymysql.connect(
++                    host='localhost', user='root', passwd='123456', db='bilibili', charset='utf8')
++                cur = conn.cursor()
++                cur.execute('INSERT INTO bilibili_user_info(mid, name, sex, rank, face, regtime, \
++                            birthday, sign, level, OfficialVerifyType, OfficialVerifyDesc, vipType, vipStatus, \
++                            coins, following, fans) \
++                VALUES ("%s","%s","%s","%s","%s","%s","%s","%s",\
++                        "%s","%s","%s","%s","%s", "%s","%s","%s")'
++                            %
++                            (mid, name, sex, rank, face, regtime, \
++                             birthday, sign, level, OfficialVerifyType, OfficialVerifyDesc, vipType, vipStatus, \
++                             coins, following, fans))
++                conn.commit()
++                
++                if 'tags' in user_data and 'churn_prediction' in user_data:
++                    save_user_profile(conn, user_data)
++                    print("User profile saved for mid: " + str(mid))
++                    
++            except Exception as e:
++                print(e)
++            finally:
++                if conn:
++                    conn.close()
++        else:
++            print("Error: " + url)
+ 
+ if __name__ == "__main__":
+     pool = ThreadPool(1)
+@@ -151,3 +182,4 @@ if __name__ == "__main__":
+  
+     pool.close()
+     pool.join()
++
